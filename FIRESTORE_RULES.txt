@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthor() {
+      return request.auth != null
+        && request.auth.uid == "KadiBgAh0sWJV1WvYMHOaWlFMn33";
+    }
+
+    function validReactionUpdate() {
+      return request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes'])
+        && request.resource.data.likes is int
+        && request.resource.data.dislikes is int
+        && request.resource.data.likes >= 0
+        && request.resource.data.dislikes >= 0
+        && (
+          (request.resource.data.likes == resource.data.likes + 1 && request.resource.data.dislikes == resource.data.dislikes)
+          || (request.resource.data.likes == resource.data.likes - 1 && request.resource.data.dislikes == resource.data.dislikes)
+          || (request.resource.data.dislikes == resource.data.dislikes + 1 && request.resource.data.likes == resource.data.likes)
+          || (request.resource.data.dislikes == resource.data.dislikes - 1 && request.resource.data.likes == resource.data.likes)
+          || (request.resource.data.likes == resource.data.likes + 1 && request.resource.data.dislikes == resource.data.dislikes - 1)
+          || (request.resource.data.likes == resource.data.likes - 1 && request.resource.data.dislikes == resource.data.dislikes + 1)
+        );
+    }
+
+    match /site/{document} {
+      allow read: if true;
+      allow create, update, delete: if isAuthor();
+    }
+
+    match /articles/{articleId} {
+      allow read: if resource.data.status == "published" || isAuthor();
+      allow create, delete: if isAuthor();
+      allow update: if isAuthor() || validReactionUpdate();
+    }
+
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthor();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
