@@ -2324,6 +2324,12 @@
             </div>
 
             <div class="form-grid">
+              <div class="field"><label>Original author name</label><input id="formAuthorName" required
+                  placeholder="Enter the article author’s full name"></div>
+              <div class="field"><label>Original author email</label><input id="formAuthorEmail" type="email" required
+                  placeholder="Enter the article author’s email address"></div>
+            </div>
+            <div class="form-grid">
               <div class="field"><label>Cover picture</label><input id="formImage" type="file" accept="image/*"></div>
               <div class="field"><label>Reading time</label><input id="formReadTime" placeholder="e.g. 5 min read">
               </div>
@@ -2606,7 +2612,7 @@
 
     function imageBlock(a, featured = false) {
       if (a.image) return `<img class="${featured ? 'featured-image' : 'article-image'}" src="${a.image}" alt="${esc(a.title)}">`;
-      return `<div class="${featured ? 'featured-image' : 'article-image'} image-placeholder"><span>Pragyah Pravaah</span></div>`;
+      return ``;
     }
 
     function articleCard(a) {
@@ -2725,7 +2731,7 @@
       if (!a) return;
       const shareUrl = new URL(articleUrl(a), window.location.origin).href;
       const shareTitle = a.title || 'Pragyah Pravaah article';
-      $('#articleModalContent').innerHTML = `${a.image ? `<img class="article-modal-image" src="${a.image}" alt="${esc(a.title)}">` : ''}<article class="article-modal-body"><div class="article-kicker">Pragyah Pravaah Journal</div><h1>${esc(a.title)}</h1><div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span><span>•</span><span>👁 ${a.views || 0} views</span></div><p class="italic">${esc(a.excerpt)}</p><div class="article-content">${sanitizeRichHtml(a.content)}</div><div class="article-share"><strong>Share this article:</strong><button class="share-btn" type="button" data-share-native data-share-url="${esc(shareUrl)}" data-share-title="${esc(shareTitle)}">Share</button><a class="share-btn" href="https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a><button class="share-btn" type="button" data-share-copy data-share-url="${esc(shareUrl)}">Copy link</button></div></article>`;
+      $('#articleModalContent').innerHTML = `${a.image ? `<img class="article-modal-image" src="${a.image}" alt="${esc(a.title)}">` : ''}<article class="article-modal-body"><h1>${esc(a.title)}</h1><div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span><span>•</span><span>👁 ${a.views || 0} views</span></div><p class="italic">${esc(a.excerpt)}</p><div class="article-content">${sanitizeRichHtml(a.content)}</div><div class="article-share"><strong>Share this article:</strong><button class="share-btn" type="button" data-share-native data-share-url="${esc(shareUrl)}" data-share-title="${esc(shareTitle)}">Share</button><a class="share-btn" href="https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a><button class="share-btn" type="button" data-share-copy data-share-url="${esc(shareUrl)}">Copy link</button></div></article>`;
       $('#articleModal').classList.remove('hidden');
       document.body.classList.add('no-scroll');
       recordView(id);
@@ -2785,6 +2791,8 @@
       $('#formCategory').value = a.category || '';
       $('#formExcerpt').value = a.excerpt;
       $('#formContent').innerHTML = sanitizeRichHtml(a.content);
+      $('#formAuthorName').value = a.authorName || a.author || '';
+      $('#formAuthorEmail').value = a.authorEmail || a.email || '';
       $('#formReadTime').value = a.readTime || '';
       $('#formFeatured').checked = !!a.featured;
       imageDraft = a.image || '';
@@ -2803,6 +2811,8 @@
         category: $('#formCategory').value.trim(),
         excerpt: $('#formExcerpt').value.trim(),
         content: sanitizeRichHtml($('#formContent').innerHTML),
+        authorName: $('#formAuthorName').value.trim(),
+        authorEmail: $('#formAuthorEmail').value.trim(),
         image: imageDraft || (old?.image || ''),
         readTime: $('#formReadTime').value.trim() || '4 min read',
         featured: $('#formFeatured').checked,
@@ -3066,7 +3076,13 @@
     $('#videoForm').addEventListener('submit', e => { e.preventDefault(); saveVideo() });
     $('#clearVideoForm').addEventListener('click', clearVideoForm);
 
-    $('#articleForm').addEventListener('submit', e => { e.preventDefault(); if (!$('#formContent').innerText.trim()) return toast('Please write the full article.'); upsertArticle(collectArticle('published')) });
+    $('#articleForm').addEventListener('submit', e => {
+      e.preventDefault();
+      if (!$('#formContent').innerText.trim()) return toast('Please write the full article.');
+      if (!$('#formAuthorName').value.trim()) return toast('Please enter the original author’s name.');
+      if (!$('#formAuthorEmail').value.trim()) return toast('Please enter the original author’s email address.');
+      upsertArticle(collectArticle('published'));
+    });
     $('#saveDraft').addEventListener('click', () => {
       if (!$('#formTitle').value.trim()) return toast('Please enter an article title.');
       if (!$('#formContent').innerText.trim()) return toast('Please write the full article.');
