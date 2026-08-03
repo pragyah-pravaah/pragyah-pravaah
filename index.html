@@ -229,11 +229,10 @@
 
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr);
+      grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
-        "heading heading"
-        "copy profile";
-      column-gap: 46px;
+        "heading"
+        "copy";
       row-gap: 30px;
       align-items: start
     }
@@ -2092,7 +2091,35 @@
         opacity: 1;
       }
     }
-  </style>
+  
+    .article-link-wrap {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .article-title-link {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .article-title-link:hover,
+    .article-title-link:focus-visible {
+      color: var(--maroon);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    .article-link-wrap img {
+      transition: transform .22s ease, filter .22s ease;
+    }
+
+    .article-link-wrap:hover img,
+    .article-link-wrap:focus-visible img {
+      transform: scale(1.015);
+      filter: brightness(.97);
+    }
+</style>
 </head>
 
 <body>
@@ -2144,16 +2171,6 @@
             <a class="btn btn-secondary" href="#about">Meet the author</a>
           </div>
         </div>
-        <aside class="profile-card">
-          <div id="heroPhotoWrap">
-            <div class="avatar-placeholder">P</div>
-          </div>
-          <div class="profile-meta">
-            <em>Written and curated by</em>
-            <h2 id="authorName">Pragya</h2>
-            <p id="authorRole">Research Scholar • Educator • Content Writer</p>
-          </div>
-        </aside>
       </div>
     </section>
 
@@ -2330,15 +2347,19 @@
                   placeholder="Enter the article author’s email address"></div>
             </div>
             <div class="form-grid">
-              <div class="field"><label>Cover picture</label><input id="formImage" type="file" accept="image/*"></div>
-              <div class="field"><label>Reading time</label><input id="formReadTime" placeholder="e.g. 5 min read">
-              </div>
+              <div class="field"><label>Schedule publication (optional)</label><input id="formScheduleAt" type="datetime-local"><small class="editor-help">Choose a future date and time, then click “Schedule Article”.</small></div>
+              <div class="field"><label>Reading time</label><input id="formReadTime" placeholder="e.g. 5 min read"></div>
             </div>
+            <div class="field"><label>Cover picture</label><input id="formImage" type="file" accept="image/*"></div>
             <div id="formImagePreview"></div>
             <div class="field"><label><input id="formFeatured" type="checkbox" style="width:auto;min-height:auto">
                 Feature this article prominently</label></div>
-            <div class="form-actions"><button class="btn btn-primary" type="submit">Publish Article</button><button
-                class="btn btn-secondary" id="saveDraft" type="button">Save as Draft</button></div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Publish Article</button>
+              <button class="btn btn-secondary" id="scheduleArticle" type="button">Schedule Article</button>
+              <button class="btn btn-secondary" id="saveDraft" type="button">Save as Draft</button>
+            </div>
+            <p class="editor-help">You can save as many separate drafts as you need. Each new draft appears in Manage Articles.</p>
           </form>
         </section>
 
@@ -2586,7 +2607,7 @@
 
     function published() {
       return state.articles
-        .filter(a => a.status === 'published')
+        .filter(a => a.status === 'published' && (!a.publishAt || new Date(a.publishAt).getTime() <= Date.now()))
         .sort((a, b) => String(b.date).localeCompare(String(a.date)));
     }
 
@@ -2611,14 +2632,14 @@
     }
 
     function imageBlock(a, featured = false) {
-      if (a.image) return `<img class="${featured ? 'featured-image' : 'article-image'}" src="${a.image}" alt="${esc(a.title)}">`;
-      return ``;
+      if (!a.image) return ``;
+      return `<a class="article-link-wrap" href="${articleUrl(a)}" target="_blank" rel="noopener" aria-label="Read ${esc(a.title)}"><img class="${featured ? 'featured-image' : 'article-image'}" src="${a.image}" alt="${esc(a.title)}"></a>`;
     }
 
     function articleCard(a) {
       return `<article class="article-card">
     ${imageBlock(a)}
-    <div class="card-body"><h3>${esc(a.title)}</h3><p>${esc(a.excerpt)}</p>
+    <div class="card-body"><h3><a class="article-title-link" href="${articleUrl(a)}" target="_blank" rel="noopener">${esc(a.title)}</a></h3><p>${esc(a.excerpt)}</p>
     <div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span><span>•</span><span>👁 ${a.views || 0} views</span></div>
     <div class="card-footer"><a class="read-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Read article</a>
     <div class="reactions"><button class="reaction-btn" data-react="like" data-id="${a.id}">♡ ${a.likes || 0}</button></div></div>
@@ -2629,7 +2650,7 @@
       const qtext = $('#articleSearch').value.trim().toLowerCase();
       const list = published().filter(a => !qtext || `${a.title} ${a.excerpt} ${a.content}`.toLowerCase().includes(qtext));
       const featured = list.find(a => a.featured) || list[0];
-      $('#featuredArticle').innerHTML = featured ? `<article class="featured-article">${imageBlock(featured, true)}<div class="featured-copy"><div class="article-kicker">Featured Article</div><h3>${esc(featured.title)}</h3><p>${esc(featured.excerpt)}</p><div class="article-meta"><span>${fmtDate(featured.date)}</span><span>•</span><span>${esc(featured.readTime || '4 min read')}</span><span>•</span><span>👁 ${featured.views || 0} views</span></div><a class="read-btn" href="${articleUrl(featured)}" target="_blank" rel="noopener">Continue reading</a></div></article>` : '';
+      $('#featuredArticle').innerHTML = featured ? `<article class="featured-article">${imageBlock(featured, true)}<div class="featured-copy"><div class="article-kicker">Featured Article</div><h3><a class="article-title-link" href="${articleUrl(featured)}" target="_blank" rel="noopener">${esc(featured.title)}</a></h3><p>${esc(featured.excerpt)}</p><div class="article-meta"><span>${fmtDate(featured.date)}</span><span>•</span><span>${esc(featured.readTime || '4 min read')}</span><span>•</span><span>👁 ${featured.views || 0} views</span></div><a class="read-btn" href="${articleUrl(featured)}" target="_blank" rel="noopener">Continue reading</a></div></article>` : '';
       $('#articleGrid').innerHTML = list.filter(a => !featured || a.id !== featured.id).map(articleCard).join('');
       $('#emptyState').classList.toggle('hidden', list.length > 0);
     }
@@ -2701,11 +2722,11 @@
 
     function renderAdmin() {
       const list = state.articles.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
-      $('#statArticles').textContent = state.articles.filter(a => a.status === 'published').length;
+      $('#statArticles').textContent = state.articles.filter(a => a.status === 'published' && (!a.publishAt || new Date(a.publishAt).getTime() <= Date.now())).length;
       $('#statLikes').textContent = state.articles.reduce((n, a) => n + (a.likes || 0), 0);
       $('#statViews').textContent = state.articles.reduce((n, a) => n + (a.views || 0), 0);
       $('#statCategories').textContent = new Set(state.articles.filter(a => a.status === 'published').map(a => a.category).filter(Boolean)).size;
-      const item = a => `<div class="manage-item"><div><h3>${esc(a.title)}</h3><p>${esc(a.category || 'Article')} • ${a.status === 'draft' ? 'Draft' : fmtDate(a.date)}</p></div><div class="small-actions"><a class="small-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Open link</a><button class="small-btn" data-copy-link="${a.id}">Copy link</button><button class="small-btn" data-edit="${a.id}">Edit</button><button class="small-btn danger" data-delete="${a.id}">Delete</button></div></div>`;
+      const item = a => `<div class="manage-item"><div><h3>${esc(a.title)}</h3><p>${esc(a.category || 'Article')} • ${a.status === 'draft' ? 'Draft' : (a.publishAt && new Date(a.publishAt).getTime() > Date.now()) ? `Scheduled: ${new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(a.publishAt))}` : fmtDate(a.date)}</p></div><div class="small-actions"><a class="small-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Open link</a><button class="small-btn" data-copy-link="${a.id}">Copy link</button><button class="small-btn" data-edit="${a.id}">Edit</button><button class="small-btn danger" data-delete="${a.id}">Delete</button></div></div>`;
       $('#recentList').innerHTML = list.slice(0, 4).map(item).join('') || '<p class="italic">No articles yet.</p>';
       $('#manageList').innerHTML = list.map(item).join('') || '<p class="italic">No articles yet.</p>';
       renderStudioProfile();
@@ -2794,6 +2815,7 @@
       $('#formAuthorName').value = a.authorName || a.author || '';
       $('#formAuthorEmail').value = a.authorEmail || a.email || '';
       $('#formReadTime').value = a.readTime || '';
+      $('#formScheduleAt').value = a.publishAt ? new Date(a.publishAt).toISOString().slice(0,16) : '';
       $('#formFeatured').checked = !!a.featured;
       imageDraft = a.image || '';
       $('#formImagePreview').innerHTML = imageDraft ? `<img class="preview-image" src="${imageDraft}" alt="Cover preview">` : '';
@@ -2817,6 +2839,7 @@
         readTime: $('#formReadTime').value.trim() || '4 min read',
         featured: $('#formFeatured').checked,
         status,
+        publishAt: $('#formScheduleAt').value ? new Date($('#formScheduleAt').value).toISOString() : '',
         likes: old?.likes || 0,
         views: old?.views || 0,
         date: old?.date || today(),
@@ -2830,7 +2853,8 @@
         await setDoc(doc(db, 'articles', a.id), a, { merge: true });
         clearEditor();
         switchPanel('manage');
-        toast(a.status === 'draft' ? 'Draft saved online.' : 'Article published online.');
+        const future = a.publishAt && new Date(a.publishAt).getTime() > Date.now();
+        toast(a.status === 'draft' ? 'Draft saved online.' : future ? 'Article scheduled successfully.' : 'Article published online.');
       } catch (err) {
         console.error(err);
         toast('Could not save article. Check Firebase rules.');
@@ -3081,8 +3105,21 @@
       if (!$('#formContent').innerText.trim()) return toast('Please write the full article.');
       if (!$('#formAuthorName').value.trim()) return toast('Please enter the original author’s name.');
       if (!$('#formAuthorEmail').value.trim()) return toast('Please enter the original author’s email address.');
+      $('#formScheduleAt').value = '';
       upsertArticle(collectArticle('published'));
     });
+    $('#scheduleArticle').addEventListener('click', () => {
+      if (!$('#formTitle').value.trim()) return toast('Please enter an article title.');
+      if (!$('#formContent').innerText.trim()) return toast('Please write the full article.');
+      if (!$('#formAuthorName').value.trim()) return toast('Please enter the original author’s name.');
+      if (!$('#formAuthorEmail').value.trim()) return toast('Please enter the original author’s email address.');
+      const value = $('#formScheduleAt').value;
+      if (!value) return toast('Please choose the publication date and time.');
+      const when = new Date(value);
+      if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return toast('Please choose a future date and time.');
+      upsertArticle(collectArticle('published'));
+    });
+
     $('#saveDraft').addEventListener('click', () => {
       if (!$('#formTitle').value.trim()) return toast('Please enter an article title.');
       if (!$('#formContent').innerText.trim()) return toast('Please write the full article.');
@@ -3180,6 +3217,7 @@
     });
 document.documentElement.style.fontSize =
 localStorage.getItem("fontSize") || "18px";
+    setInterval(() => renderAll(), 60000);
     subscribeSite();
     renderAll();
     window.scrollTo(0, 0);
