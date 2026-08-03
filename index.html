@@ -229,10 +229,11 @@
 
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr);
       grid-template-areas:
-        "heading"
-        "copy";
+        "heading heading"
+        "copy profile";
+      column-gap: 46px;
       row-gap: 30px;
       align-items: start
     }
@@ -2171,6 +2172,16 @@
             <a class="btn btn-secondary" href="#about">Meet the author</a>
           </div>
         </div>
+        <aside class="profile-card">
+          <div id="heroPhotoWrap">
+            <div class="avatar-placeholder">P</div>
+          </div>
+          <div class="profile-meta">
+            <em>Written and curated by</em>
+            <h2 id="authorName">Pragya</h2>
+            <p id="authorRole">Research Scholar • Educator • Content Writer</p>
+          </div>
+        </aside>
       </div>
     </section>
 
