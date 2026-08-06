@@ -1,2 +1,3 @@
-/sitemap.xml  /.netlify/functions/sitemap  200
-/articles/*   /article.html                200
+/sitemap.xml              /.netlify/functions/sitemap                     200
+/articles/:id/:slug       /.netlify/functions/article?id=:id&slug=:slug   200
+/articles/:id             /.netlify/functions/article?id=:id              200

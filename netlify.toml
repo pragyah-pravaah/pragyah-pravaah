@@ -1,11 +1,21 @@
 [build]
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+
 [[headers]]
   for = "/sitemap.xml"
   [headers.values]
     Content-Type = "application/xml; charset=utf-8"
-    Cache-Control = "public, max-age=0, s-maxage=3600"
+    Cache-Control = "public, max-age=0, s-maxage=1800"
+
+[[headers]]
+  for = "/articles/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, s-maxage=300"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[headers]]
   for = "/*"
