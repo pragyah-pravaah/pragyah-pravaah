@@ -2120,6 +2120,10 @@
       transform: scale(1.015);
       filter: brightness(.97);
     }
+  .telegram-follow {
+    margin-top: 14px;
+    display: inline-flex;
+  }
 </style>
 </head>
 
@@ -2151,6 +2155,7 @@
 
         <a href="#about">About</a>
         <a href="#contact">Contact</a>
+        <a href="https://t.me/QuoteofBooks" target="_blank" rel="noopener noreferrer">Follow</a>
         <button class="studio-btn" id="openStudio">Author Studio</button>
       </nav>
     </div>
@@ -2229,6 +2234,7 @@
         <p>For article submissions, reviews, suggestions or other enquiries, write to us at the email address below.</p>
         <a class="contact-email" href="mailto:rspvgarg@gmail.com?subject=Submission%20for%20Pragyah%20Pravaah">✉
           rspvgarg@gmail.com</a>
+        <a class="contact-email telegram-follow" href="https://t.me/QuoteofBooks" target="_blank" rel="noopener noreferrer">✈ Follow our Telegram channel</a>
       </div>
     </section>
 
@@ -2240,6 +2246,7 @@
         <h3 id="footerName">Pragyah Pravaah</h3><em id="footerTagline">A gentle flow of knowledge and thought</em>
         <p>© <span id="year"></span> <span id="footerAuthor">Pragya</span>. All rights reserved.</p>
         <p class="footer-contact">Contact: <a href="mailto:rspvgarg@gmail.com">rspvgarg@gmail.com</a></p>
+        <p class="footer-contact">Follow: <a href="https://t.me/QuoteofBooks" target="_blank" rel="noopener noreferrer">Telegram Channel</a></p>
       </div>
       <div class="footer-links"><a href="#home">Home</a><a href="#articles">Articles</a><a href="#about">About</a><a
           href="#contact">Contact</a></div>
@@ -2287,7 +2294,6 @@
           <button class="active" data-panel="overview">Overview</button>
           <button data-panel="write">Write Article</button>
           <button data-panel="manage">Manage Articles</button>
-          <button data-panel="videosAdmin">Manage Videos</button>
           <button data-panel="settings">Website Settings</button>
           <button data-panel="backup">Backup</button>
           <button id="logoutAuthor" type="button">Log out</button>
@@ -2303,8 +2309,8 @@
           </div>
           <div class="stats-grid">
             <div class="stat-card"><em>Published articles</em><strong id="statArticles">0</strong></div>
-            <div class="stat-card"><em>Total likes</em><strong id="statLikes">0</strong></div>
-            <div class="stat-card"><em>Total views</em><strong id="statViews">0</strong></div>
+            <div class="stat-card"><em>Scheduled articles</em><strong id="statScheduled">0</strong></div>
+            <div class="stat-card"><em>Saved drafts</em><strong id="statDrafts">0</strong></div>
             <div class="stat-card"><em>Categories</em><strong id="statCategories">0</strong></div>
           </div>
           <div class="admin-card">
@@ -2381,12 +2387,21 @@
             </div>
           </div>
           <div class="admin-card">
-            <div class="manage-list" id="manageList"></div>
+            <h3>Published Articles</h3>
+            <div class="manage-list" id="publishedManageList"></div>
+          </div>
+          <div class="admin-card">
+            <h3>Scheduled Articles</h3>
+            <div class="manage-list" id="scheduledManageList"></div>
+          </div>
+          <div class="admin-card">
+            <h3>Saved Drafts</h3>
+            <div class="manage-list" id="draftManageList"></div>
           </div>
         </section>
 
 
-        <section class="studio-panel hidden" id="videosAdmin">
+        <section class="studio-panel hidden" id="videosAdmin" style="display:none!important">
           <div class="panel-title">
             <div><em>Visible only through the Videos menu</em>
               <h2>Manage Videos</h2>
@@ -2651,9 +2666,8 @@
       return `<article class="article-card">
     ${imageBlock(a)}
     <div class="card-body"><h3><a class="article-title-link" href="${articleUrl(a)}" target="_blank" rel="noopener">${esc(a.title)}</a></h3><p>${esc(a.excerpt)}</p>
-    <div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span><span>•</span><span>👁 ${a.views || 0} views</span></div>
-    <div class="card-footer"><a class="read-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Read article</a>
-    <div class="reactions"><button class="reaction-btn" data-react="like" data-id="${a.id}">♡ ${a.likes || 0}</button></div></div>
+    <div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span></div>
+    <div class="card-footer"><a class="read-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Read article</a></div>
     </div></article>`;
     }
 
@@ -2661,7 +2675,7 @@
       const qtext = $('#articleSearch').value.trim().toLowerCase();
       const list = published().filter(a => !qtext || `${a.title} ${a.excerpt} ${a.content}`.toLowerCase().includes(qtext));
       const featured = list.find(a => a.featured) || list[0];
-      $('#featuredArticle').innerHTML = featured ? `<article class="featured-article">${imageBlock(featured, true)}<div class="featured-copy"><div class="article-kicker">Featured Article</div><h3><a class="article-title-link" href="${articleUrl(featured)}" target="_blank" rel="noopener">${esc(featured.title)}</a></h3><p>${esc(featured.excerpt)}</p><div class="article-meta"><span>${fmtDate(featured.date)}</span><span>•</span><span>${esc(featured.readTime || '4 min read')}</span><span>•</span><span>👁 ${featured.views || 0} views</span></div><a class="read-btn" href="${articleUrl(featured)}" target="_blank" rel="noopener">Continue reading</a></div></article>` : '';
+      $('#featuredArticle').innerHTML = featured ? `<article class="featured-article">${imageBlock(featured, true)}<div class="featured-copy"><div class="article-kicker">Featured Article</div><h3><a class="article-title-link" href="${articleUrl(featured)}" target="_blank" rel="noopener">${esc(featured.title)}</a></h3><p>${esc(featured.excerpt)}</p><div class="article-meta"><span>${fmtDate(featured.date)}</span><span>•</span><span>${esc(featured.readTime || '4 min read')}</span></div><a class="read-btn" href="${articleUrl(featured)}" target="_blank" rel="noopener">Continue reading</a></div></article>` : '';
       $('#articleGrid').innerHTML = list.filter(a => !featured || a.id !== featured.id).map(articleCard).join('');
       $('#emptyState').classList.toggle('hidden', list.length > 0);
     }
@@ -2732,17 +2746,25 @@
     }
 
     function renderAdmin() {
-      const list = state.articles.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
-      $('#statArticles').textContent = state.articles.filter(a => a.status === 'published' && (!a.publishAt || new Date(a.publishAt).getTime() <= Date.now())).length;
-      $('#statLikes').textContent = state.articles.reduce((n, a) => n + (a.likes || 0), 0);
-      $('#statViews').textContent = state.articles.reduce((n, a) => n + (a.views || 0), 0);
-      $('#statCategories').textContent = new Set(state.articles.filter(a => a.status === 'published').map(a => a.category).filter(Boolean)).size;
-      const item = a => `<div class="manage-item"><div><h3>${esc(a.title)}</h3><p>${esc(a.category || 'Article')} • ${a.status === 'draft' ? 'Draft' : (a.publishAt && new Date(a.publishAt).getTime() > Date.now()) ? `Scheduled: ${new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(a.publishAt))}` : fmtDate(a.date)}</p></div><div class="small-actions"><a class="small-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Open link</a><button class="small-btn" data-copy-link="${a.id}">Copy link</button><button class="small-btn" data-edit="${a.id}">Edit</button><button class="small-btn danger" data-delete="${a.id}">Delete</button></div></div>`;
-      $('#recentList').innerHTML = list.slice(0, 4).map(item).join('') || '<p class="italic">No articles yet.</p>';
-      $('#manageList').innerHTML = list.map(item).join('') || '<p class="italic">No articles yet.</p>';
+      const now = Date.now();
+      const list = state.articles.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      const publishedList = list.filter(a => a.status === 'published' && (!a.publishAt || new Date(a.publishAt).getTime() <= now));
+      const scheduledList = list.filter(a => a.status === 'published' && a.publishAt && new Date(a.publishAt).getTime() > now);
+      const draftList = list.filter(a => a.status === 'draft');
+
+      $('#statArticles').textContent = publishedList.length;
+      $('#statScheduled').textContent = scheduledList.length;
+      $('#statDrafts').textContent = draftList.length;
+      $('#statCategories').textContent = new Set(publishedList.map(a => a.category).filter(Boolean)).size;
+
+      const item = a => `<div class="manage-item"><div><h3>${esc(a.title)}</h3><p>${esc(a.category || 'Article')} • ${a.status === 'draft' ? 'Draft' : (a.publishAt && new Date(a.publishAt).getTime() > now) ? `Scheduled: ${new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(a.publishAt))}` : fmtDate(a.date)}</p></div><div class="small-actions"><a class="small-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Open link</a><button class="small-btn" data-copy-link="${a.id}">Copy link</button><button class="small-btn" data-edit="${a.id}">Edit</button><button class="small-btn danger" data-delete="${a.id}">Delete</button></div></div>`;
+
+      $('#recentList').innerHTML = publishedList.slice(0, 4).map(item).join('') || '<p class="italic">No published articles yet.</p>';
+      $('#publishedManageList').innerHTML = publishedList.map(item).join('') || '<p class="italic">No published articles.</p>';
+      $('#scheduledManageList').innerHTML = scheduledList.map(item).join('') || '<p class="italic">No scheduled articles.</p>';
+      $('#draftManageList').innerHTML = draftList.map(item).join('') || '<p class="italic">No saved drafts.</p>';
       renderStudioProfile();
       fillSettingsForm();
-      renderVideoAdmin();
     }
 
     function renderAll() {
@@ -2763,10 +2785,9 @@
       if (!a) return;
       const shareUrl = new URL(articleUrl(a), window.location.origin).href;
       const shareTitle = a.title || 'Pragyah Pravaah article';
-      $('#articleModalContent').innerHTML = `${a.image ? `<img class="article-modal-image" src="${a.image}" alt="${esc(a.title)}">` : ''}<article class="article-modal-body"><h1>${esc(a.title)}</h1><div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span><span>•</span><span>👁 ${a.views || 0} views</span></div><p class="italic">${esc(a.excerpt)}</p><div class="article-content">${sanitizeRichHtml(a.content)}</div><div class="article-share"><strong>Share this article:</strong><button class="share-btn" type="button" data-share-native data-share-url="${esc(shareUrl)}" data-share-title="${esc(shareTitle)}">Share</button><a class="share-btn" href="https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a><button class="share-btn" type="button" data-share-copy data-share-url="${esc(shareUrl)}">Copy link</button></div></article>`;
+      $('#articleModalContent').innerHTML = `${a.image ? `<img class="article-modal-image" src="${a.image}" alt="${esc(a.title)}">` : ''}<article class="article-modal-body"><h1>${esc(a.title)}</h1><div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span></div><p class="italic">${esc(a.excerpt)}</p><div class="article-content">${sanitizeRichHtml(a.content)}</div><div class="article-share"><strong>Share this article:</strong><button class="share-btn" type="button" data-share-native data-share-url="${esc(shareUrl)}" data-share-title="${esc(shareTitle)}">Share</button><a class="share-btn" href="https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a><button class="share-btn" type="button" data-share-copy data-share-url="${esc(shareUrl)}">Copy link</button></div></article>`;
       $('#articleModal').classList.remove('hidden');
       document.body.classList.add('no-scroll');
-      recordView(id);
     }
 
     function closeArticle() {
@@ -3042,7 +3063,6 @@
         return;
       }
 
-      const reactBtn = e.target.closest('[data-react]'); if (reactBtn) react(reactBtn.dataset.id, reactBtn.dataset.react);
       const go = e.target.closest('[data-go]'); if (go) switchPanel(go.dataset.go);
       const edit = e.target.closest('[data-edit]'); if (edit) editArticle(edit.dataset.edit);
       const copyLink = e.target.closest('[data-copy-link]');

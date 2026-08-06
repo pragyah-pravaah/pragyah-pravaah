@@ -1,40 +1,11 @@
 [build]
-  publish = "."
-  functions = "."
-
-[functions]
-  node_bundler = "esbuild"
-
-[[redirects]]
-  from = "/sitemap.xml"
-  to = "/.netlify/functions/sitemap"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/articles/:id/:slug"
-  to = "/.netlify/functions/article?id=:id&slug=:slug"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/articles/:id"
-  to = "/.netlify/functions/article?id=:id"
-  status = 200
-  force = true
+  functions = "netlify/functions"
 
 [[headers]]
   for = "/sitemap.xml"
   [headers.values]
     Content-Type = "application/xml; charset=utf-8"
-    Cache-Control = "public, max-age=0, s-maxage=1800"
-
-[[headers]]
-  for = "/articles/*"
-  [headers.values]
-    Cache-Control = "public, max-age=0, s-maxage=300"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cache-Control = "public, max-age=0, s-maxage=3600"
 
 [[headers]]
   for = "/*"
