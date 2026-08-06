@@ -1,8 +1,27 @@
 [build]
-  functions = "netlify/functions"
+  publish = "."
+  functions = "."
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/articles/:id/:slug"
+  to = "/.netlify/functions/article?id=:id&slug=:slug"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/articles/:id"
+  to = "/.netlify/functions/article?id=:id"
+  status = 200
+  force = true
 
 [[headers]]
   for = "/sitemap.xml"
