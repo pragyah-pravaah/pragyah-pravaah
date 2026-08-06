@@ -1266,6 +1266,35 @@
       margin-top: 5px
     }
 
+    .manage-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 18px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 8px 0;
+      background: var(--cream);
+    }
+
+    .manage-tab {
+      border: 1px solid var(--maroon);
+      background: var(--paper);
+      color: var(--maroon);
+      border-radius: 999px;
+      padding: 10px 16px;
+      min-height: 42px;
+      font-weight: 700;
+    }
+
+    .manage-tab.active {
+      background: var(--maroon);
+      color: #fff;
+    }
+
+    .manage-tab-panel.hidden { display: none !important; }
+
     .admin-card {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -2394,15 +2423,20 @@
               <h2>Manage Articles</h2>
             </div>
           </div>
-          <div class="admin-card">
+          <div class="manage-tabs" role="tablist" aria-label="Article status">
+            <button class="manage-tab active" type="button" data-manage-tab="published" role="tab" aria-selected="true">Published <span id="publishedTabCount">0</span></button>
+            <button class="manage-tab" type="button" data-manage-tab="scheduled" role="tab" aria-selected="false">Scheduled <span id="scheduledTabCount">0</span></button>
+            <button class="manage-tab" type="button" data-manage-tab="drafts" role="tab" aria-selected="false">Drafts <span id="draftTabCount">0</span></button>
+          </div>
+          <div class="admin-card manage-tab-panel" data-manage-panel="published">
             <h3>Published Articles</h3>
             <div class="manage-list" id="publishedManageList"></div>
           </div>
-          <div class="admin-card">
+          <div class="admin-card manage-tab-panel hidden" data-manage-panel="scheduled">
             <h3>Scheduled Articles</h3>
             <div class="manage-list" id="scheduledManageList"></div>
           </div>
-          <div class="admin-card">
+          <div class="admin-card manage-tab-panel hidden" data-manage-panel="drafts">
             <h3>Saved Drafts</h3>
             <div class="manage-list" id="draftManageList"></div>
           </div>
@@ -2682,6 +2716,18 @@
       return `/articles/${encodeURIComponent(article.id)}/${encodeURIComponent(article.slug || slugify(article.title))}`;
     }
 
+    function cacheArticleForFastOpen(article) {
+      if (!article?.id) return;
+      try {
+        localStorage.setItem(`pp_article_cache_${article.id}`, JSON.stringify({
+          cachedAt: Date.now(),
+          article
+        }));
+      } catch (error) {
+        console.debug('Article cache unavailable', error);
+      }
+    }
+
     function youtubeId(url) {
       try {
         const u = new URL(String(url || '').trim());
@@ -2851,6 +2897,9 @@
       $('#statScheduled').textContent = scheduledList.length;
       $('#statDrafts').textContent = draftList.length;
       $('#statCategories').textContent = new Set(publishedList.map(a => a.category).filter(Boolean)).size;
+      $('#publishedTabCount').textContent = publishedList.length;
+      $('#scheduledTabCount').textContent = scheduledList.length;
+      $('#draftTabCount').textContent = draftList.length;
 
       const item = a => `<div class="manage-item"><div><h3>${esc(a.title)}</h3><p>${esc(a.category || 'Article')} • ${a.status === 'draft' ? 'Draft' : (a.publishAt && new Date(a.publishAt).getTime() > now) ? `Scheduled: ${new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(a.publishAt))}` : fmtDate(a.date)}</p></div><div class="small-actions"><a class="small-btn" href="${articleUrl(a)}" target="_blank" rel="noopener">Open link</a><button class="small-btn" data-copy-link="${a.id}">Copy link</button><button class="small-btn" data-edit="${a.id}">Edit</button><button class="small-btn danger" data-delete="${a.id}">Delete</button></div></div>`;
 
@@ -2860,6 +2909,17 @@
       $('#draftManageList').innerHTML = draftList.map(item).join('') || '<p class="italic">No saved drafts.</p>';
       renderStudioProfile();
       fillSettingsForm();
+    }
+
+    function showManageTab(name) {
+      $$('.manage-tab').forEach(button => {
+        const active = button.dataset.manageTab === name;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+      });
+      $$('[data-manage-panel]').forEach(panel =>
+        panel.classList.toggle('hidden', panel.dataset.managePanel !== name)
+      );
     }
 
     function renderAll() {
@@ -3142,6 +3202,17 @@
     });
 
     document.addEventListener('click', async e => {
+      const articleLink = e.target.closest('a[href^="/articles/"]');
+      if (articleLink) {
+        const parts = articleLink.getAttribute('href').split('/').filter(Boolean);
+        const article = state.articles.find(item => item.id === decodeURIComponent(parts[1] || ''));
+        if (article) cacheArticleForFastOpen(article);
+      }
+      const manageTab = e.target.closest('[data-manage-tab]');
+      if (manageTab) {
+        showManageTab(manageTab.dataset.manageTab);
+        return;
+      }
       const shareAnchor = e.target.closest('.article-share a.share-btn');
       if (shareAnchor && activeRead) recordShare(activeRead.id, activeRead.title);
       const nativeShare = e.target.closest('[data-share-native]');

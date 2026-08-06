@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="//www.gstatic.com">
+<link rel="dns-prefetch" href="//firestore.googleapis.com">
 <title>Article | Pragyah Pravaah</title><meta name="description" content="Read a thoughtful article on Pragyah Pravaah.">
 <link rel="canonical" id="canonical" href="https://pragyahpravaah.netlify.app/">
 <meta property="og:type" content="article"><meta property="og:site_name" content="Pragyah Pravaah">
@@ -133,6 +137,35 @@ body.capture-shield #shell{
 </div>
 <div id="shareNote" class="share-note" hidden></div></div></article></main><div id="copyWarning" class="copy-warning" hidden>Copying is restricted for this article.</div>
 <footer>© <span id="year"></span> Pragyah Pravaah</footer>
+<script>
+(function fastCachedArticleRender(){
+  const parts=location.pathname.split('/').filter(Boolean);
+  const id=parts[0]==='articles'?decodeURIComponent(parts[1]||''):'';
+  if(!id)return;
+  try{
+    const raw=localStorage.getItem(`pp_article_cache_${id}`);
+    if(!raw)return;
+    const cached=JSON.parse(raw);
+    if(!cached?.article||Date.now()-Number(cached.cachedAt||0)>86400000)return;
+    const a=cached.article;
+    const clean=v=>{const t=document.createElement('template');t.innerHTML=String(v||'');t.content.querySelectorAll('script,style,iframe,object,embed').forEach(n=>n.remove());return t.innerHTML};
+    const d=new Date(a.date||a.createdAt||Date.now());
+    document.title=`${a.title||'Article'} | Pragyah Pravaah`;
+    document.getElementById('title').textContent=a.title||'';
+    document.getElementById('date').textContent=Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'long',year:'numeric'}).format(d);
+    document.getElementById('readTime').textContent=a.readTime||'4 min read';
+    document.getElementById('excerpt').textContent=a.excerpt||'';
+    document.getElementById('content').innerHTML=clean(a.content);
+    if(a.image){const c=document.getElementById('cover');c.src=a.image;c.alt=a.title||'Article cover';c.hidden=false}
+    const authorName=String(a.authorName||a.author||'').trim();
+    const authorEmail=String(a.authorEmail||a.email||'').trim();
+    const authorBox=document.getElementById('authorBox');
+    if(authorName||authorEmail){authorBox.hidden=false;document.getElementById('articleAuthorName').textContent=authorName||'Not provided';const el=document.getElementById('articleAuthorEmail');el.textContent=authorEmail||'Not provided';if(authorEmail)el.href=`mailto:${authorEmail}`}
+    document.getElementById('status').hidden=true;
+    document.getElementById('shell').hidden=false;
+  }catch(error){console.debug('Fast article preview unavailable',error)}
+})();
+</script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";import {getAuth,onAuthStateChanged,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";import {getFirestore,doc,getDoc,setDoc,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAF7lYQQDWQWPUL1WcUEQhzMx8BDtb2t8Y",authDomain:"pragyah-pravaah.firebaseapp.com",projectId:"pragyah-pravaah",storageBucket:"pragyah-pravaah.firebasestorage.app",messagingSenderId:"135992415341",appId:"1:135992415341:web:d14ebe733fa7a61b2f1b64"});const db=getFirestore(app);const auth=getAuth(app);
