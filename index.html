@@ -1182,6 +1182,13 @@
       font-size: 14px
     }
 
+
+    .analytics-note{margin:.4rem 0 1.2rem;color:var(--muted);font-style:italic}
+    .analytics-table{display:grid;gap:10px}
+    .analytics-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+    .analytics-row strong{overflow-wrap:anywhere}.analytics-row span{text-align:right}
+    @media(max-width:700px){.analytics-row{grid-template-columns:1fr 1fr}.analytics-row strong{grid-column:1/-1}.analytics-row span{text-align:left}}
+
     .studio-nav {
       display: grid;
       gap: 7px
@@ -2294,6 +2301,7 @@
           <button class="active" data-panel="overview">Overview</button>
           <button data-panel="write">Write Article</button>
           <button data-panel="manage">Manage Articles</button>
+          <button data-panel="statistics">Statistics</button>
           <button data-panel="settings">Website Settings</button>
           <button data-panel="backup">Backup</button>
           <button id="logoutAuthor" type="button">Log out</button>
@@ -2425,6 +2433,21 @@
           </div>
         </section>
 
+
+        <section class="studio-panel hidden" id="statistics">
+          <div class="panel-title"><div><em>Private readership insights</em><h2>Website Statistics</h2></div><button class="btn btn-secondary" id="refreshStatistics" type="button">Refresh</button></div>
+          <p class="analytics-note">Visitor numbers are approximate browser/session counts. Reading time records active time spent with an article open.</p>
+          <div class="stats-grid">
+            <div class="stat-card"><em>Total visits</em><strong id="analyticsVisits">0</strong></div>
+            <div class="stat-card"><em>Approx. unique visitors</em><strong id="analyticsUnique">0</strong></div>
+            <div class="stat-card"><em>Article opens</em><strong id="analyticsOpens">0</strong></div>
+            <div class="stat-card"><em>Share clicks</em><strong id="analyticsShares">0</strong></div>
+            <div class="stat-card"><em>Total reading time</em><strong id="analyticsReadTime">0 min</strong></div>
+            <div class="stat-card"><em>Average reading session</em><strong id="analyticsAvgRead">0 sec</strong></div>
+          </div>
+          <div class="admin-card"><h3>Article performance</h3><div class="analytics-table" id="analyticsArticleList"><p class="italic">No statistics recorded yet.</p></div></div>
+        </section>
+
         <section class="studio-panel hidden" id="settings">
           <div class="panel-title">
             <div><em>Personalise your space</em>
@@ -2528,6 +2551,78 @@
     let videoUnsubscribe = null;
     state.videos = state.videos || [];
     let currentArticleMode = 'public';
+    let activeRead = null;
+    let analyticsVisitRecorded = false;
+
+
+    const analyticsDay = () => new Date().toISOString().slice(0,10);
+    async function analyticsIncrement(ref, increments = {}, extras = {}) {
+      if (!auth.currentUser) return;
+      try {
+        await runTransaction(db, async tx => {
+          const snap = await tx.get(ref);
+          const base = snap.exists() ? snap.data() : {};
+          const next = { ...base, ...extras, updatedAt: serverTimestamp() };
+          Object.entries(increments).forEach(([key, amount]) => next[key] = Number(base[key] || 0) + Number(amount || 0));
+          tx.set(ref, next, { merge: true });
+        });
+      } catch (err) { console.debug('Analytics unavailable', err); }
+    }
+    async function recordSiteVisit() {
+      if (analyticsVisitRecorded || !auth.currentUser) return;
+      analyticsVisitRecorded = true;
+      const day = analyticsDay();
+      await analyticsIncrement(doc(db,'analytics_daily',day), { visits: 1 });
+      const visitorRef = doc(db,'analytics_visitors',`${day}_${auth.currentUser.uid}`);
+      try {
+        const existing = await getDoc(visitorRef);
+        if (!existing.exists()) {
+          await setDoc(visitorRef,{day,createdAt:serverTimestamp()});
+          await analyticsIncrement(doc(db,'analytics_daily',day), { uniqueVisitors: 1 });
+        }
+      } catch (err) { console.debug('Unique visitor analytics unavailable', err); }
+    }
+    async function recordArticleOpen(article) {
+      if (!article?.id || !auth.currentUser) return;
+      await analyticsIncrement(doc(db,'analytics_daily',analyticsDay()), { articleOpens: 1 });
+      await analyticsIncrement(doc(db,'analytics_articles',article.id), { opens: 1 }, { title: article.title || 'Untitled article' });
+      activeRead = { id: article.id, title: article.title || 'Untitled article', started: Date.now() };
+    }
+    async function finishActiveRead() {
+      if (!activeRead || !auth.currentUser) return;
+      const current = activeRead; activeRead = null;
+      const seconds = Math.max(1, Math.min(1800, Math.round((Date.now()-current.started)/1000)));
+      await analyticsIncrement(doc(db,'analytics_daily',analyticsDay()), { readSeconds: seconds, readSessions: 1 });
+      await analyticsIncrement(doc(db,'analytics_articles',current.id), { readSeconds: seconds, readSessions: 1 }, { title: current.title });
+    }
+    async function recordShare(articleId, title) {
+      if (!articleId || !auth.currentUser) return;
+      await analyticsIncrement(doc(db,'analytics_daily',analyticsDay()), { shares: 1 });
+      await analyticsIncrement(doc(db,'analytics_articles',articleId), { shares: 1 }, { title: title || 'Untitled article' });
+    }
+    const formatDuration = seconds => {
+      seconds = Number(seconds || 0);
+      if (seconds < 60) return `${Math.round(seconds)} sec`;
+      if (seconds < 3600) return `${Math.round(seconds/60)} min`;
+      const h=Math.floor(seconds/3600), m=Math.round((seconds%3600)/60); return `${h}h ${m}m`;
+    };
+    async function loadStatistics() {
+      if (!isAuthor()) return;
+      try {
+        const [dailySnap, articleSnap] = await Promise.all([getDocs(collection(db,'analytics_daily')),getDocs(collection(db,'analytics_articles'))]);
+        const totals={visits:0,uniqueVisitors:0,articleOpens:0,shares:0,readSeconds:0,readSessions:0};
+        dailySnap.forEach(d=>Object.keys(totals).forEach(k=>totals[k]+=Number(d.data()[k]||0)));
+        $('#analyticsVisits').textContent=totals.visits.toLocaleString('en-IN');
+        $('#analyticsUnique').textContent=totals.uniqueVisitors.toLocaleString('en-IN');
+        $('#analyticsOpens').textContent=totals.articleOpens.toLocaleString('en-IN');
+        $('#analyticsShares').textContent=totals.shares.toLocaleString('en-IN');
+        $('#analyticsReadTime').textContent=formatDuration(totals.readSeconds);
+        $('#analyticsAvgRead').textContent=formatDuration(totals.readSessions ? totals.readSeconds/totals.readSessions : 0);
+        const rows=[]; articleSnap.forEach(d=>{const x=d.data(); rows.push({id:d.id,title:x.title||state.articles.find(a=>a.id===d.id)?.title||'Untitled article',opens:Number(x.opens||0),shares:Number(x.shares||0),readSeconds:Number(x.readSeconds||0),readSessions:Number(x.readSessions||0)});});
+        rows.sort((a,b)=>b.opens-a.opens);
+        $('#analyticsArticleList').innerHTML=rows.length?rows.map(x=>`<div class="analytics-row"><strong>${esc(x.title)}</strong><span>Opens: ${x.opens}</span><span>Shares: ${x.shares}</span><span>Avg read: ${formatDuration(x.readSessions?x.readSeconds/x.readSessions:0)}</span></div>`).join(''):'<p class="italic">No statistics recorded yet.</p>';
+      } catch(err){console.error(err); toast('Statistics could not be loaded. Publish the updated Firestore rules.');}
+    }
 
     function toast(message) {
       const el = $('#toast');
@@ -2787,10 +2882,12 @@
       const shareTitle = a.title || 'Pragyah Pravaah article';
       $('#articleModalContent').innerHTML = `${a.image ? `<img class="article-modal-image" src="${a.image}" alt="${esc(a.title)}">` : ''}<article class="article-modal-body"><h1>${esc(a.title)}</h1><div class="article-meta"><span>${fmtDate(a.date)}</span><span>•</span><span>${esc(a.readTime || '4 min read')}</span></div><p class="italic">${esc(a.excerpt)}</p><div class="article-content">${sanitizeRichHtml(a.content)}</div><div class="article-share"><strong>Share this article:</strong><button class="share-btn" type="button" data-share-native data-share-url="${esc(shareUrl)}" data-share-title="${esc(shareTitle)}">Share</button><a class="share-btn" href="https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a><button class="share-btn" type="button" data-share-copy data-share-url="${esc(shareUrl)}">Copy link</button></div></article>`;
       $('#articleModal').classList.remove('hidden');
+      recordArticleOpen(a);
       document.body.classList.add('no-scroll');
     }
 
     function closeArticle() {
+      finishActiveRead();
       $('#articleModal').classList.add('hidden');
       document.body.classList.remove('no-scroll');
       if (window.location.pathname.startsWith('/articles/')) {
@@ -2821,6 +2918,7 @@
     }
 
     function switchPanel(id) {
+      if (id === 'statistics') loadStatistics();
       $$('.studio-panel').forEach(p => p.classList.toggle('hidden', p.id !== id));
       $$('.studio-nav button[data-panel]').forEach(b => b.classList.toggle('active', b.dataset.panel === id));
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3044,10 +3142,14 @@
     });
 
     document.addEventListener('click', async e => {
+      const shareAnchor = e.target.closest('.article-share a.share-btn');
+      if (shareAnchor && activeRead) recordShare(activeRead.id, activeRead.title);
       const nativeShare = e.target.closest('[data-share-native]');
       if (nativeShare) {
         const url = nativeShare.dataset.shareUrl;
         const title = nativeShare.dataset.shareTitle || 'Pragyah Pravaah article';
+        const current = state.articles.find(a => new URL(articleUrl(a), window.location.origin).href === url);
+        if (current) recordShare(current.id, current.title);
         if (navigator.share) {
           try { await navigator.share({ title, url }); } catch (err) { if (err?.name !== 'AbortError') console.error(err); }
         } else {
@@ -3059,6 +3161,8 @@
       const copyShare = e.target.closest('[data-share-copy]');
       if (copyShare) {
         const url = copyShare.dataset.shareUrl;
+        const current = state.articles.find(a => new URL(articleUrl(a), window.location.origin).href === url);
+        if (current) recordShare(current.id, current.title);
         navigator.clipboard?.writeText(url).then(() => toast('Article link copied.')).catch(() => prompt('Copy this article link:', url));
         return;
       }
@@ -3105,6 +3209,7 @@
     });
 
     $$('.studio-nav button[data-panel]').forEach(b => b.addEventListener('click', () => switchPanel(b.dataset.panel)));
+    $('#refreshStatistics')?.addEventListener('click', loadStatistics);
     $('#clearEditor').addEventListener('click', clearEditor);
     $('#formImage').addEventListener('change', async e => {
       try {
@@ -3232,6 +3337,8 @@
     });
 
     onAuthStateChanged(auth, async user => {
+      if (!user) { try { await signInAnonymously(auth); } catch (err) { console.debug(err); } return; }
+      recordSiteVisit();
       if (user?.uid === AUTHOR_UID) {
         try { await ensureInitialData(); } catch (err) { console.error(err); toast('Initial online migration failed. Check Firestore rules.'); }
         subscribeArticles('author');
@@ -3241,6 +3348,7 @@
         if (!$('#studio').classList.contains('hidden')) showLogin();
       }
     });
+    window.addEventListener('pagehide', finishActiveRead);
     window.addEventListener("load", () => {
       setTimeout(() => {
         document.getElementById("pageLoader")?.classList.add("hide");

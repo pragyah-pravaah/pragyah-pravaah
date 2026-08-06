@@ -10,3 +10,5 @@ PRAGYAH PRAVAAH — NETLIFY DYNAMIC ARTICLE VERSION
    - netlify/functions/sitemap.js
 4. Netlify rewrites `/articles/<id>/<slug>` to article.html, so each article opens as a separate shareable page.
 5. After deployment, hard-refresh the site.
+
+IMPORTANT: Publish the contents of FIRESTORE_RULES.txt in Firebase Console > Firestore Database > Rules so private statistics can record and load.

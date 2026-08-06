@@ -1,49 +1,33 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthor() {
-      return request.auth != null
-        && request.auth.uid == "KadiBgAh0sWJV1WvYMHOaWlFMn33";
+    function isAuthor() { return request.auth != null && request.auth.uid == "KadiBgAh0sWJV1WvYMHOaWlFMn33"; }
+    function authenticated() { return request.auth != null; }
+    function analyticsKeys() { return ['visits','uniqueVisitors','articleOpens','shares','readSeconds','readSessions','opens','title','updatedAt']; }
+    function safeCounter(v) { return v is int && v >= 0; }
+    function validAnalytics() {
+      return request.resource.data.keys().hasOnly(analyticsKeys())
+        && (!request.resource.data.keys().hasAny(['visits']) || safeCounter(request.resource.data.visits))
+        && (!request.resource.data.keys().hasAny(['uniqueVisitors']) || safeCounter(request.resource.data.uniqueVisitors))
+        && (!request.resource.data.keys().hasAny(['articleOpens']) || safeCounter(request.resource.data.articleOpens))
+        && (!request.resource.data.keys().hasAny(['shares']) || safeCounter(request.resource.data.shares))
+        && (!request.resource.data.keys().hasAny(['readSeconds']) || safeCounter(request.resource.data.readSeconds))
+        && (!request.resource.data.keys().hasAny(['readSessions']) || safeCounter(request.resource.data.readSessions))
+        && (!request.resource.data.keys().hasAny(['opens']) || safeCounter(request.resource.data.opens));
     }
-
-    function validLikeUpdate() {
-      return request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
-        && request.resource.data.likes is int
-        && request.resource.data.likes >= 0
-        && (
-          request.resource.data.likes == resource.data.get('likes', 0) + 1
-          || request.resource.data.likes == resource.data.get('likes', 0) - 1
-        );
-    }
-
-    function validViewUpdate() {
-      return request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
-        && request.resource.data.views is int
-        && request.resource.data.views >= 1
-        && request.resource.data.views == resource.data.get('views', 0) + 1;
-    }
-
-    match /site/{document} {
-      allow read: if true;
-      allow create, update, delete: if isAuthor();
-    }
-
+    match /site/{document} { allow read: if true; allow create, update, delete: if isAuthor(); }
     match /articles/{articleId} {
       allow read: if resource.data.status == "published" || isAuthor();
-      allow create, delete: if isAuthor();
-      allow update: if isAuthor() || validLikeUpdate() || validViewUpdate();
-    }
-
-    match /videos/{videoId} {
-      allow read: if true;
       allow create, update, delete: if isAuthor();
     }
-
-    match /{document=**} {
-      allow read, write: if false;
+    match /videos/{videoId} { allow read: if true; allow create, update, delete: if isAuthor(); }
+    match /analytics_daily/{day} { allow read: if isAuthor(); allow create, update: if authenticated() && validAnalytics(); allow delete: if isAuthor(); }
+    match /analytics_articles/{articleId} { allow read: if isAuthor(); allow create, update: if authenticated() && validAnalytics(); allow delete: if isAuthor(); }
+    match /analytics_visitors/{visitorId} {
+      allow read: if isAuthor() || (authenticated() && visitorId.matches('.*_' + request.auth.uid));
+      allow create: if authenticated() && visitorId.matches('.*_' + request.auth.uid);
+      allow update: if false; allow delete: if isAuthor();
     }
+    match /{document=**} { allow read, write: if false; }
   }
 }
